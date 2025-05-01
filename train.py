@@ -56,14 +56,14 @@ def main():
                       help='Batch size for training')
     parser.add_argument('--num_epochs', type=int, default=100,
                       help='Number of epochs to train')
-    parser.add_argument('--learning_rate', type=float, default=0.1,
-                      help='Initial learning rate')
-    parser.add_argument('--weight_decay', type=float, default=1e-4,
-                      help='Weight decay')
+    parser.add_argument('--base_lr', type=float, default=0.016,
+                      help='Base learning rate (will be scaled by batch size)')
     parser.add_argument('--num_workers', type=int, default=4,
                       help='Number of workers for data loading')
     parser.add_argument('--save_dir', type=str, default='results',
                       help='Directory to save model checkpoints')
+    parser.add_argument('--resume', action='store_true',
+                      help='Resume training from checkpoint')
     args = parser.parse_args()
 
     # Set device
@@ -90,13 +90,20 @@ def main():
 
     # Create loss function, optimizer, and scheduler
     criterion = nn.CrossEntropyLoss()
-    optimizer = create_optimizer(model, args.learning_rate, args.weight_decay)
+    optimizer = create_optimizer(model, args.batch_size, args.base_lr)
     scheduler = create_scheduler(optimizer, args.num_epochs)
+
+    # Load checkpoint if resuming
+    start_epoch = 0
+    best_acc = 0.0
+    if args.resume:
+        start_epoch, best_acc = load_checkpoint(model, optimizer, scheduler, args.save_dir)
+        print(f"Resuming training from epoch {start_epoch} with best accuracy {best_acc:.4f}")
 
     # Train model
     train_losses, val_losses, train_accs, val_accs = train_model(
         model, train_loader, val_loader, criterion, optimizer, scheduler,
-        args.num_epochs, device, args.save_dir)
+        args.num_epochs, device, args.save_dir, start_epoch=start_epoch, best_acc=best_acc)
 
     # Evaluate on test set
     test_loss, test_acc = evaluate_model(model, test_loader, criterion, device)
