@@ -5,11 +5,12 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, OneCycleLR
 import time
 import os
 from tqdm import tqdm
+import torch.cuda.amp as amp
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, 
-                num_epochs, device, save_dir='results'):
+                num_epochs, device, save_dir='results', scaler=None):
     """
-    Train a model and save checkpoints
+    Train a model and save checkpoints with mixed precision support
     """
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -30,18 +31,29 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         running_corrects = 0
 
         for inputs, labels in tqdm(train_loader):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            inputs = inputs.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
 
             optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
             
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # Mixed precision training
+            if scaler is not None:
+                with amp.autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+                
+                scaler.scale(loss).backward()
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
             
-            optimizer.step()
             scheduler.step()
 
             _, preds = torch.max(outputs, 1)
@@ -62,11 +74,16 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
 
         with torch.no_grad():
             for inputs, labels in tqdm(val_loader):
-                inputs = inputs.to(device)
-                labels = labels.to(device)
+                inputs = inputs.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
 
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
+                if scaler is not None:
+                    with amp.autocast():
+                        outputs = model(inputs)
+                        loss = criterion(outputs, labels)
+                else:
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
 
                 _, preds = torch.max(outputs, 1)
                 running_loss += loss.item() * inputs.size(0)
@@ -82,9 +99,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         # Save checkpoint if best model
         if epoch_acc > best_acc:
             best_acc = epoch_acc
+            # Save model state dict without DataParallel wrapper if present
+            model_state_dict = model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict()
             torch.save({
                 'epoch': epoch,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': model_state_dict,
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'train_losses': train_losses,
@@ -109,15 +128,15 @@ def create_scheduler(optimizer, num_epochs):
     Create OneCycleLR scheduler for better convergence
     """
     scheduler = OneCycleLR(optimizer, max_lr=0.1, epochs=num_epochs,
-                          steps_per_epoch=50000//128,  # CIFAR100 training set size / batch size
+                          steps_per_epoch=50000//256,  # CIFAR100 training set size / batch size
                           pct_start=0.3,  # 30% of epochs for warmup
                           div_factor=10.0,  # initial_lr = max_lr/div_factor
                           final_div_factor=100.0)  # min_lr = initial_lr/final_div_factor
     return scheduler
 
-def evaluate_model(model, test_loader, criterion, device):
+def evaluate_model(model, test_loader, criterion, device, scaler=None):
     """
-    Evaluate model on test set
+    Evaluate model on test set with mixed precision support
     """
     model.eval()
     running_loss = 0.0
@@ -125,11 +144,16 @@ def evaluate_model(model, test_loader, criterion, device):
 
     with torch.no_grad():
         for inputs, labels in tqdm(test_loader):
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            inputs = inputs.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
 
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            if scaler is not None:
+                with amp.autocast():
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+            else:
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
 
             _, preds = torch.max(outputs, 1)
             running_loss += loss.item() * inputs.size(0)
