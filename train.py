@@ -7,7 +7,7 @@ from torchvision.models import resnet50, resnet152, densenet201
 from data.dataset import get_dataloaders
 from utils.train import train_model, create_optimizer, create_scheduler, evaluate_model
 
-def get_model(model_name, num_classes=200, input_size=64):
+def get_model(model_name, num_classes=100, input_size=32):
     if model_name == 'efficientnet-b0':
         return efficientnet_b0(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b1':
@@ -40,25 +40,22 @@ def get_model(model_name, num_classes=200, input_size=64):
         raise ValueError(f"Unknown model: {model_name}")
 
 def main():
-    parser = argparse.ArgumentParser(description='Train models on image datasets')
+    parser = argparse.ArgumentParser(description='Train models on CIFAR100')
     parser.add_argument('--model', type=str, required=True,
                     choices=['efficientnet-b0', 'efficientnet-b1', 'efficientnet-b2',
                             'efficientnet-b3', 'efficientnet-b4', 'efficientnet-b5',
                             'efficientnet-b6', 'efficientnet-b7', 'resnet50',
                             'resnet152', 'densenet201'],
                     help='Model to train')
-    parser.add_argument('--dataset', type=str, default='tinyimagenet',
-                    choices=['tinyimagenet', 'cifar10'],
-                    help='Dataset to use for training')
     parser.add_argument('--data_dir', type=str, default='data',
                     help='Directory to store dataset')
     parser.add_argument('--batch_size', type=int, default=128,
                     help='Batch size for training')
-    parser.add_argument('--num_epochs', type=int, default=100,
+    parser.add_argument('--num_epochs', type=int, default=200,
                     help='Number of epochs to train')
     parser.add_argument('--learning_rate', type=float, default=0.1,
                     help='Initial learning rate')
-    parser.add_argument('--weight_decay', type=float, default=1e-4,
+    parser.add_argument('--weight_decay', type=float, default=5e-4,
                     help='Weight decay')
     parser.add_argument('--num_workers', type=int, default=4,
                     help='Number of workers for data loading')
@@ -72,7 +69,7 @@ def main():
 
     # Get dataloaders with optimized settings
     train_loader, val_loader, test_loader, classes = get_dataloaders(
-        args.dataset,  # Add dataset name as first argument
+        'cifar100',  # Always use CIFAR100
         args.data_dir, 
         batch_size=args.batch_size, 
         num_workers=0,  # Set to 0 for M1 Mac
@@ -80,9 +77,6 @@ def main():
         persistent_workers=False  # Disable persistent workers for M1
     )
     print(f'Number of classes: {len(classes)}')
-
-    # Set input size based on dataset
-    input_size = 32 if args.dataset == 'cifar10' else 64
 
     # Create model
     model = get_model(args.model, len(classes))

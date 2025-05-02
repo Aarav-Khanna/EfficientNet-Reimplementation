@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, OneCycleLR
 import time
 import os
 from tqdm import tqdm
@@ -37,7 +37,12 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
+            
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            
             optimizer.step()
+            scheduler.step()
 
             _, preds = torch.max(outputs, 1)
             running_loss += loss.item() * inputs.size(0)
@@ -74,9 +79,6 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
 
         print(f'Val Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
-        # Update learning rate
-        scheduler.step()
-
         # Save checkpoint if best model
         if epoch_acc > best_acc:
             best_acc = epoch_acc
@@ -94,19 +96,23 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
 
     return train_losses, val_losses, train_accs, val_accs
 
-def create_optimizer(model, learning_rate=0.1, weight_decay=1e-4):
+def create_optimizer(model, learning_rate=0.1, weight_decay=5e-4):
     """
-    Create optimizer with weight decay
+    Create optimizer with weight decay and momentum
     """
     optimizer = optim.SGD(model.parameters(), lr=learning_rate,
-                        momentum=0.9, weight_decay=weight_decay)
+                        momentum=0.9, nesterov=True, weight_decay=weight_decay)
     return optimizer
 
 def create_scheduler(optimizer, num_epochs):
     """
-    Create cosine annealing learning rate scheduler
+    Create OneCycleLR scheduler for better convergence
     """
-    scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
+    scheduler = OneCycleLR(optimizer, max_lr=0.1, epochs=num_epochs,
+                          steps_per_epoch=50000//128,  # CIFAR100 training set size / batch size
+                          pct_start=0.3,  # 30% of epochs for warmup
+                          div_factor=10.0,  # initial_lr = max_lr/div_factor
+                          final_div_factor=100.0)  # min_lr = initial_lr/final_div_factor
     return scheduler
 
 def evaluate_model(model, test_loader, criterion, device):

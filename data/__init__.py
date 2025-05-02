@@ -1,3 +1,3 @@
-from .dataset import TinyImageNetDataset, get_tinyimagenet_dataloaders
+from .dataset import get_cifar100_dataloaders, get_dataloaders
 
-__all__ = ['TinyImageNetDataset', 'get_tinyimagenet_dataloaders'] 
+__all__ = ['get_cifar100_dataloaders', 'get_dataloaders'] 
