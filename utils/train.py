@@ -93,19 +93,15 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
 
     return train_losses, val_losses, train_accs, val_accs
 
-def create_optimizer(model, batch_size=128, base_lr=0.016):
+def create_optimizer(model, learning_rate=0.1, weight_decay=1e-4):
     """
-    Create RMSProp optimizer with settings from the paper
+    Create SGD optimizer with momentum
     """
-    # Scale learning rate by batch size
-    lr = base_lr * (batch_size / 64)
-    
-    optimizer = optim.RMSprop(
+    optimizer = optim.SGD(
         model.parameters(),
-        lr=lr,
+        lr=learning_rate,
         momentum=0.9,
-        alpha=0.9,  # decay
-        eps=0.001
+        weight_decay=weight_decay
     )
     return optimizer
 
