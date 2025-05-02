@@ -6,72 +6,38 @@ from models.efficientnet import efficientnet_b0, efficientnet_b1, efficientnet_b
 from torchvision.models import resnet50, resnet152, densenet201
 from data.dataset import get_dataloaders
 from utils.train import train_model, create_optimizer, create_scheduler, evaluate_model
-import math
-import torch.optim as optim
 
 def get_model(model_name, num_classes=200, input_size=64):
-    # Parameter counts from the paper
-    param_counts = {
-        'efficientnet-b0': 5.3,  # 5.3M parameters
-        'efficientnet-b1': 7.8,
-        'efficientnet-b2': 9.2,
-        'efficientnet-b3': 12,
-        'efficientnet-b4': 19,
-        'efficientnet-b5': 30,
-        'efficientnet-b6': 43,
-        'efficientnet-b7': 66,
-        'resnet50': 25.5,
-        'resnet152': 60.2,
-        'densenet201': 20.0
-    }
-    
     if model_name == 'efficientnet-b0':
-        model = efficientnet_b0(num_classes, input_size=input_size)
+        return efficientnet_b0(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b1':
-        model = efficientnet_b1(num_classes, input_size=input_size)
+        return efficientnet_b1(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b2':
-        model = efficientnet_b2(num_classes, input_size=input_size)
+        return efficientnet_b2(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b3':
-        model = efficientnet_b3(num_classes, input_size=input_size)
+        return efficientnet_b3(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b4':
-        model = efficientnet_b4(num_classes, input_size=input_size)
+        return efficientnet_b4(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b5':
-        model = efficientnet_b5(num_classes, input_size=input_size)
+        return efficientnet_b5(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b6':
-        model = efficientnet_b6(num_classes, input_size=input_size)
+        return efficientnet_b6(num_classes, input_size=input_size)
     elif model_name == 'efficientnet-b7':
-        model = efficientnet_b7(num_classes, input_size=input_size)
+        return efficientnet_b7(num_classes, input_size=input_size)
     elif model_name == 'resnet50':
         model = resnet50(pretrained=False)
         model.fc = nn.Linear(model.fc.in_features, num_classes)
+        return model
     elif model_name == 'resnet152':
         model = resnet152(pretrained=False)
         model.fc = nn.Linear(model.fc.in_features, num_classes)
+        return model
     elif model_name == 'densenet201':
         model = densenet201(pretrained=False)
         model.classifier = nn.Linear(model.classifier.in_features, num_classes)
+        return model
     else:
         raise ValueError(f"Unknown model: {model_name}")
-    
-    # Calculate scaling factor based on parameter count relative to B0
-    scale_factor = math.sqrt(param_counts[model_name] / param_counts['efficientnet-b0'])
-    return model, scale_factor
-
-def create_optimizer(model, learning_rate=0.1, weight_decay=1e-4, scale_factor=1.0):
-    """
-    Create SGD optimizer with momentum and parameter count scaling
-    """
-    # Scale learning rate by square root of parameter count ratio
-    scaled_lr = learning_rate * scale_factor
-    print(f'Using scaled learning rate: {scaled_lr:.4f} (base: {learning_rate:.4f}, scale: {scale_factor:.2f})')
-    
-    optimizer = optim.SGD(
-        model.parameters(),
-        lr=scaled_lr,
-        momentum=0.9,
-        weight_decay=weight_decay
-    )
-    return optimizer
 
 def main():
     parser = argparse.ArgumentParser(description='Train models on image datasets')
@@ -90,8 +56,8 @@ def main():
                       help='Batch size for training')
     parser.add_argument('--num_epochs', type=int, default=100,
                       help='Number of epochs to train')
-    parser.add_argument('--learning_rate', type=float, default=0.05,
-                      help='Base learning rate (will be scaled by model size)')
+    parser.add_argument('--learning_rate', type=float, default=0.1,
+                      help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                       help='Weight decay')
     parser.add_argument('--num_workers', type=int, default=4,
@@ -120,13 +86,13 @@ def main():
     # Set input size based on dataset
     input_size = 32 if args.dataset == 'cifar10' else 64
 
-    # Create model and get scaling factor
-    model, scale_factor = get_model(args.model, len(classes))
+    # Create model
+    model = get_model(args.model, len(classes))
     model = model.to(device)
 
     # Create loss function, optimizer, and scheduler
     criterion = nn.CrossEntropyLoss()
-    optimizer = create_optimizer(model, args.learning_rate, args.weight_decay, scale_factor)
+    optimizer = create_optimizer(model, args.learning_rate, args.weight_decay)
     scheduler = create_scheduler(optimizer, args.num_epochs)
 
     # Load checkpoint if resuming
