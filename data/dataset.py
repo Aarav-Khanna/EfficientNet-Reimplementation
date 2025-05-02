@@ -75,13 +75,13 @@ def get_cifar10_dataloaders(root_dir, batch_size=128, num_workers=0, pin_memory=
         transform=val_transform
     )
 
-    # Randomly sample 1k images from training set
-    print("Sampling 1k images from training set...")
-    indices = torch.randperm(len(full_train_dataset))[:1000]
+    # Randomly sample 10k images from training set
+    print("Sampling 10k images from training set...")
+    indices = torch.randperm(len(full_train_dataset))[:10000]
     train_subset = torch.utils.data.Subset(full_train_dataset, indices)
     print(f"Using {len(train_subset)} training images")
 
-    # Split the 1k subset into train and val
+    # Split the 10k subset into train and val
     train_size = int(0.9 * len(train_subset))
     val_size = len(train_subset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(
