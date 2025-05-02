@@ -53,33 +53,40 @@ def main():
     parser.add_argument('--data_dir', type=str, default='data',
                       help='Directory to store dataset')
     parser.add_argument('--batch_size', type=int, default=128,
-                      help='Batch size for training')
+                      help='Batch size for training (larger = faster but more memory)')
     parser.add_argument('--num_epochs', type=int, default=100,
                       help='Number of epochs to train')
     parser.add_argument('--learning_rate', type=float, default=0.1,
                       help='Learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
                       help='Weight decay')
-    parser.add_argument('--num_workers', type=int, default=4,
-                      help='Number of workers for data loading')
+    parser.add_argument('--num_workers', type=int, default=0,
+                      help='Number of workers for data loading (0 recommended for MPS)')
     parser.add_argument('--save_dir', type=str, default='results',
                       help='Directory to save model checkpoints')
-    parser.add_argument('--resume', action='store_true',
-                      help='Resume training from checkpoint')
     args = parser.parse_args()
 
-    # Set device
-    device = torch.device('mps' if torch.backends.mps.is_available() else 'cpu')
+    # Set device and MPS optimizations
+    if torch.backends.mps.is_available():
+        device = torch.device('mps')
+        # Enable memory efficient attention if available
+        if hasattr(torch.backends.mps, 'is_mem_efficient_attention_enabled'):
+            torch.backends.mps.enable_mem_efficient_attention()
+        # Set memory format to channels_last for better MPS performance
+        torch.backends.mps.set_memory_format(torch.channels_last)
+        print('MPS optimizations enabled')
+    else:
+        device = torch.device('cpu')
     print(f'Using device: {device}')
 
     # Get dataloaders with optimized settings
     train_loader, val_loader, test_loader, classes = get_dataloaders(
-        args.dataset,  # Add dataset name as first argument
+        args.dataset,
         args.data_dir, 
         batch_size=args.batch_size, 
-        num_workers=0,  # Set to 0 for M1 Mac
+        num_workers=0,  # Keep at 0 for MPS
         pin_memory=True,  # Enable pin memory for faster data transfer
-        persistent_workers=False  # Disable persistent workers for M1
+        persistent_workers=False  # Disable persistent workers for MPS
     )
     print(f'Number of classes: {len(classes)}')
 
@@ -89,23 +96,20 @@ def main():
     # Create model
     model = get_model(args.model, len(classes))
     model = model.to(device)
+    
+    # Convert model to channels_last memory format for MPS
+    if torch.backends.mps.is_available():
+        model = model.to(memory_format=torch.channels_last)
 
     # Create loss function, optimizer, and scheduler
     criterion = nn.CrossEntropyLoss()
     optimizer = create_optimizer(model, args.learning_rate, args.weight_decay)
     scheduler = create_scheduler(optimizer, args.num_epochs)
 
-    # Load checkpoint if resuming
-    start_epoch = 0
-    best_acc = 0.0
-    # if args.resume:
-    #     start_epoch, best_acc = load_checkpoint(model, optimizer, scheduler, args.save_dir)
-    #     print(f"Resuming training from epoch {start_epoch} with best accuracy {best_acc:.4f}")
-
     # Train model
     train_losses, val_losses, train_accs, val_accs = train_model(
         model, train_loader, val_loader, criterion, optimizer, scheduler,
-        args.num_epochs, device, args.save_dir, start_epoch=start_epoch, best_acc=best_acc)
+        args.num_epochs, device, args.save_dir)
 
     # Evaluate on test set
     test_loss, test_acc = evaluate_model(model, test_loader, criterion, device)
