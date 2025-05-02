@@ -7,19 +7,20 @@ import os
 from tqdm import tqdm
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, 
-                num_epochs, device, save_dir='results', start_epoch=0, best_acc=0.0):
+                num_epochs, device, save_dir='results'):
     """
     Train a model and save checkpoints
     """
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
+    best_acc = 0.0
     train_losses = []
     val_losses = []
     train_accs = []
     val_accs = []
 
-    for epoch in range(start_epoch, num_epochs):
+    for epoch in range(num_epochs):
         print(f'Epoch {epoch+1}/{num_epochs}')
         print('-' * 10)
 
@@ -95,14 +96,10 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
 
 def create_optimizer(model, learning_rate=0.1, weight_decay=1e-4):
     """
-    Create SGD optimizer with momentum
+    Create optimizer with weight decay
     """
-    optimizer = optim.SGD(
-        model.parameters(),
-        lr=learning_rate,
-        momentum=0.9,
-        weight_decay=weight_decay
-    )
+    optimizer = optim.SGD(model.parameters(), lr=learning_rate,
+                        momentum=0.9, weight_decay=weight_decay)
     return optimizer
 
 def create_scheduler(optimizer, num_epochs):

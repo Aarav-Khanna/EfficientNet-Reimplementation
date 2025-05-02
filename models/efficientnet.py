@@ -42,7 +42,7 @@ class MBConvBlock(nn.Module):
         # Depthwise convolution phase
         self.depthwise_conv = nn.Sequential(
             nn.Conv2d(expanded_channels, expanded_channels, kernel_size, stride, 
-                     padding=kernel_size//2, groups=expanded_channels, bias=False),
+                    padding=kernel_size//2, groups=expanded_channels, bias=False),
             nn.BatchNorm2d(expanded_channels),
             Swish()
         )
