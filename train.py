@@ -72,8 +72,6 @@ def main():
         # Enable memory efficient attention if available
         if hasattr(torch.backends.mps, 'is_mem_efficient_attention_enabled'):
             torch.backends.mps.enable_mem_efficient_attention()
-        # Set memory format to channels_last for better MPS performance
-        torch.backends.mps.set_memory_format(torch.channels_last)
         print('MPS optimizations enabled')
     else:
         device = torch.device('cpu')
@@ -97,9 +95,9 @@ def main():
     model = get_model(args.model, len(classes))
     model = model.to(device)
     
-    # Convert model to channels_last memory format for MPS
-    if torch.backends.mps.is_available():
-        model = model.to(memory_format=torch.channels_last)
+    # Remove the unsupported memory format conversion
+    # if torch.backends.mps.is_available():
+    #     model = model.to(memory_format=torch.channels_last)
 
     # Create loss function, optimizer, and scheduler
     criterion = nn.CrossEntropyLoss()
