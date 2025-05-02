@@ -43,7 +43,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
             running_corrects += torch.sum(preds == labels.data)
 
         epoch_loss = running_loss / len(train_loader.dataset)
-        epoch_acc = running_corrects.double() / len(train_loader.dataset)
+        epoch_acc = running_corrects.float() / len(train_loader.dataset)
         train_losses.append(epoch_loss)
         train_accs.append(epoch_acc.item())
 
@@ -67,7 +67,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 running_corrects += torch.sum(preds == labels.data)
 
         epoch_loss = running_loss / len(val_loader.dataset)
-        epoch_acc = running_corrects.double() / len(val_loader.dataset)
+        epoch_acc = running_corrects.float() / len(val_loader.dataset)
         val_losses.append(epoch_loss)
         val_accs.append(epoch_acc.item())
 
@@ -98,7 +98,7 @@ def create_optimizer(model, batch_size=128, base_lr=0.016):
     Create RMSProp optimizer with settings from the paper
     """
     # Scale learning rate by batch size
-    lr = base_lr * (batch_size / 256)
+    lr = base_lr * (batch_size / 64)
     
     optimizer = optim.RMSprop(
         model.parameters(),
@@ -137,7 +137,7 @@ def evaluate_model(model, test_loader, criterion, device):
             running_corrects += torch.sum(preds == labels.data)
 
     test_loss = running_loss / len(test_loader.dataset)
-    test_acc = running_corrects.double() / len(test_loader.dataset)
+    test_acc = running_corrects.float() / len(test_loader.dataset)
 
     print(f'Test Loss: {test_loss:.4f} Acc: {test_acc:.4f}')
     return test_loss, test_acc 
