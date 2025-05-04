@@ -1,27 +1,29 @@
 # EfficientNet Reimplementation
 
-This project implements the EfficientNet architecture as described in the paper ["EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks"](https://arxiv.org/abs/1905.11946) by Mingxing Tan and Quoc V. Le.
+This project implements the EfficientNet architecture as described in the paper ["EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks"](https://arxiv.org/abs/1905.11946) by Mingxing Tan and Quoc V. Le, optimized for CIFAR100 classification on NVIDIA A100 GPUs.
 
 ## Features
 
 - Implementation of EfficientNet B0-B7 variants
-- Support for both CIFAR-10 and TinyImageNet datasets
-- Training utilities with learning rate scheduling
+- Optimized for CIFAR100 dataset (100 classes)
+- Training utilities with advanced learning rate scheduling
 - Model analysis and visualization tools
-- MPS (Metal Performance Shaders) support for M1 Macs
+- NVIDIA A100 GPU optimizations with mixed precision training
+- Multi-GPU support with DataParallel
+- Advanced data augmentation and preprocessing
 
 ## Project Structure
 
 ```
 EfficientNet-Reimplementation/
 ├── data/
-│   ├── dataset.py          # Dataset loading and preprocessing
+│   ├── dataset.py          # CIFAR100 dataset loading and preprocessing
 │   └── __init__.py
 ├── models/
 │   ├── efficientnet.py     # EfficientNet implementation
 │   └── __init__.py
 ├── utils/
-│   ├── train.py           # Training utilities
+│   ├── train.py           # Training utilities with mixed precision support
 │   └── __init__.py
 ├── analysis/
 │   ├── plot_results.py    # Visualization tools
@@ -48,14 +50,14 @@ pip install -r requirements.txt
 
 ### Training
 
-Train a model on CIFAR-10 (recommended for testing):
+Train a model on CIFAR100 with default settings:
 ```bash
-python train.py --model efficientnet-b0 --dataset cifar10 --batch_size 128 --num_epochs 100
+python train.py --model efficientnet-b0 --batch_size 256 --num_epochs 200
 ```
 
-Train a model on TinyImageNet (full training):
+Train with mixed precision (recommended for A100):
 ```bash
-python train.py --model efficientnet-b0 --dataset tinyimagenet --batch_size 128 --num_epochs 350
+python train.py --model efficientnet-b0 --mixed_precision
 ```
 
 ### Available Models
@@ -66,13 +68,14 @@ python train.py --model efficientnet-b0 --dataset tinyimagenet --batch_size 128 
 ### Training Parameters
 
 - `--model`: Model architecture to train
-- `--dataset`: Dataset to use (`cifar10` or `tinyimagenet`)
-- `--batch_size`: Batch size for training (default: 128)
-- `--num_epochs`: Number of training epochs
+- `--batch_size`: Batch size for training (default: 256)
+- `--num_epochs`: Number of training epochs (default: 200)
 - `--learning_rate`: Initial learning rate (default: 0.1)
-- `--weight_decay`: Weight decay (default: 1e-4)
-- `--data_dir`: Directory to store datasets (default: 'data')
+- `--weight_decay`: Weight decay (default: 5e-4)
+- `--num_workers`: Number of data loading workers (default: 8)
+- `--data_dir`: Directory to store dataset (default: 'data')
 - `--save_dir`: Directory to save model checkpoints (default: 'results')
+- `--mixed_precision`: Enable mixed precision training (recommended for A100)
 
 ## Implementation Details
 
@@ -82,18 +85,31 @@ The implementation follows the paper's architecture:
 - MBConv blocks with squeeze-and-excitation
 - Swish activation function
 - Proper width and depth scaling for B0-B7 variants
-- Input size: 224x224 (standard) or 64x64 (for CIFAR-10/TinyImageNet)
+- Input size: 32x32 (optimized for CIFAR100)
+
+### GPU Optimizations
+
+- Automatic Mixed Precision (AMP) training
+- Multi-GPU support with DataParallel
+- Optimized data loading with pin memory
+- Non-blocking data transfers
+- cuDNN benchmarking enabled
+- Gradient clipping for stability
 
 ### Dataset Handling
 
-- CIFAR-10: 32x32 images, 10 classes
-- TinyImageNet: 64x64 images, 200 classes
-- Automatic data augmentation and normalization
-- Efficient data loading with caching
+- CIFAR100: 32x32 images, 100 classes
+- Advanced data augmentation:
+  - Random cropping with padding
+  - Random horizontal flipping
+  - Random rotation
+  - Color jittering
+- Efficient data loading with persistent workers
+- Automatic dataset download and caching
 
 ## Results
 
-The implementation aims to reproduce the paper's results:
+The implementation aims to achieve state-of-the-art results on CIFAR100:
 - EfficientNet-B0: ~5.3M parameters
 - EfficientNet-B1: ~7.8M parameters
 - EfficientNet-B2: ~9.2M parameters
