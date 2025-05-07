@@ -13,6 +13,7 @@ This project implements the EfficientNet architecture as described in the paper 
 - Advanced data augmentation and preprocessing
 - Compound scaling parameter search with constraint optimization
 - Resource-aware model scaling
+- Class Activation Map (CAM) visualization for model interpretability
 
 ## Project Structure
 
@@ -32,6 +33,7 @@ EfficientNet-Reimplementation/
 │   └── __init__.py
 ├── train.py               # Main training script
 ├── parameter_search.py    # Compound scaling parameter search
+├── cam_visualization_colab.py  # CAM visualization in Google Colab
 ├── requirements.txt       # Project dependencies
 └── README.md             # This file
 ```
@@ -74,6 +76,23 @@ The parameter search implements the compound scaling constraint from the paper:
 - α * β² * γ² ≈ 2 (where α is depth, β is width, γ is resolution)
 - Searches for combinations where 1.9 ≤ α * β² * γ² ≤ 2.1
 - Tracks model size and FLOPs for each combination
+
+### Class Activation Map (CAM) Visualization
+
+Visualize and compare Class Activation Maps across different scaling strategies:
+```bash
+python cam_visualization_colab.py --images_path /path/to/images --output_path /path/to/output
+```
+
+This creates visualizations showing:
+- Original images
+- Activation heatmaps for baseline model
+- Activation heatmaps for deeper models
+- Activation heatmaps for wider models
+- Activation heatmaps for higher resolution models
+- Activation heatmaps for compound scaling models
+
+The CAM visualizations help interpret where the model focuses its attention when making predictions, highlighting the benefit of compound scaling in creating more focused and accurate attention maps.
 
 ### Available Models
 
@@ -132,6 +151,15 @@ The implementation includes the paper's compound scaling method:
   - Color jittering
 - Efficient data loading with persistent workers
 - Automatic dataset download and caching
+
+### Model Interpretability
+
+The project includes tools for model interpretability:
+- Class Activation Map (CAM) visualization for all scaling approaches
+- Comparison of attention patterns across different scaling methods
+- Custom colormap similar to the one used in the EfficientNet paper
+- Integration with Google Colab for easy visualization sharing
+- Support for batch processing multiple images
 
 ## Results
 
