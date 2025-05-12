@@ -19,7 +19,7 @@ if not os.path.exists('/content/drive'):
 # Import from EfficientNet project
 sys.path.append('/content/drive/MyDrive/EfficientNet-Reimplementation')
 from models.efficientnet import efficientnet_b0
-from parameter_search import create_scaled_model
+from code.parameter_search import create_scaled_model
 
 # Create a colormap similar to the one in the paper
 def get_cam_colormap():

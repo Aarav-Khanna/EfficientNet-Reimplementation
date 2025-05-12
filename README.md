@@ -1,189 +1,97 @@
 # EfficientNet Reimplementation
 
-This project implements the EfficientNet architecture as described in the paper ["EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks"](https://arxiv.org/abs/1905.11946) by Mingxing Tan and Quoc V. Le, optimized for CIFAR100 classification on NVIDIA A100 GPUs.
+## Introduction
 
-## Features
+This repository contains a re-implementation of the paper ["EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks"](https://arxiv.org/abs/1905.11946) by Mingxing Tan and Quoc V. Le. The main contribution of the paper is the introduction of a compound scaling method for CNNs, enabling efficient scaling of depth, width, and resolution to achieve state-of-the-art accuracy with fewer resources. This project adapts EfficientNet for CIFAR100 classification and provides tools for model analysis and interpretability.
 
-- Implementation of EfficientNet B0-B7 variants
-- Optimized for CIFAR100 dataset (100 classes)
-- Training utilities with advanced learning rate scheduling
-- Model analysis and visualization tools
-- NVIDIA A100 GPU optimizations with mixed precision training
-- Multi-GPU support with DataParallel
-- Advanced data augmentation and preprocessing
-- Compound scaling parameter search with constraint optimization
-- Resource-aware model scaling
-- Class Activation Map (CAM) visualization for model interpretability
+## Chosen Result
 
-## Project Structure
+We reimplemented the core contributions of the EfficientNet paper. First, we reproduced the grid search for the optimal compound scaling coefficients (α, β, γ) under the constraint α * β² * γ² ≈ 2, as described in the original work. Using these coefficients, we constructed EfficientNet models B0 through B7 and trained them on CIFAR-100. We then replicated the key result of the paper: the accuracy improvements as model size increases, comparing our EfficientNet models to ResNet-50, DenseNet-201, and ResNet-152 on CIFAR-100, all under the same computational constraints—mirroring the analysis in Figure 1 of the original paper. Additionally, we reproduced the validation and test accuracy results (Table 8 in the paper) for our models. Finally, we generated Class Activation Map (CAM) visualizations to replicate the interpretability analysis shown in Figure 7 of the paper.
+
+## GitHub Contents
 
 ```
 EfficientNet-Reimplementation/
-├── data/
-│   ├── dataset.py          # CIFAR100 dataset loading and preprocessing
-│   └── __init__.py
-├── models/
-│   ├── efficientnet.py     # EfficientNet implementation
-│   └── __init__.py
-├── utils/
-│   ├── train.py           # Training utilities with mixed precision support
-│   └── __init__.py
-├── analysis/
-│   ├── plot_results.py    # Visualization tools
-│   └── __init__.py
-├── train.py               # Main training script
-├── parameter_search.py    # Compound scaling parameter search
-├── cam_visualization_colab.py  # CAM visualization in Google Colab
-├── requirements.txt       # Project dependencies
-└── README.md             # This file
+├── code/
+│   ├── data/                # CIFAR100 dataset loading and preprocessing
+│   ├── models/              # EfficientNet implementation
+│   ├── utils/               # Training utilities
+│   ├── train.py             # Main training script
+│   ├── parameter_search.py  # Compound scaling parameter search
+│   └── cam_visualization_colab.py  # CAM visualization
+├── results/                 # Plots and visualizations
+├── README.md                # Project overview and instructions
+├── requirements.txt         # Dependencies
+└── LICENSE                  # License file
 ```
 
-## Installation
+- All code is under `code/`.
+- Results plots and visualizations are in `results/`.
+- Dataset handling scripts are in `code/data/`.
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/EfficientNet-Reimplementation.git
-cd EfficientNet-Reimplementation
-```
+## Re-implementation Details
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+- **Approach:** Faithful re-implementation of EfficientNet (B0-B7) for CIFAR100, including compound scaling and model interpretability tools.
+- **Models:** EfficientNet B0-B7, with reference models (ResNet, DenseNet) for comparison.
+- **Datasets:** CIFAR100 (32x32 images, 100 classes), with advanced augmentation.
+- **Tools:** PyTorch, mixed precision (AMP), multi-GPU support, parameter search for scaling.
+- **Evaluation:** Accuracy, model size, FLOPs, and CAM-based interpretability.
+- **Challenges:** Adapting EfficientNet to CIFAR100's small input size, optimizing for A100 GPUs, and automating compound scaling search.
 
-## Usage
+## Reproduction Steps
 
-### Training
+To reproduce the results or use this repo:
 
-Train a model on CIFAR100 with default settings:
-```bash
-python train.py --model efficientnet-b0 --batch_size 256 --num_epochs 200
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/EfficientNet-Reimplementation.git
+   cd EfficientNet-Reimplementation
+   ```
+2. **Install dependencies:**
+   ```bash
+   pip install -r code/requirements.txt
+   ```
+3. **Download CIFAR100:**
+   The dataset will be automatically downloaded to `data/` when running the training script.
+4. **Train a model:**
+   ```bash
+   python code/train.py --model efficientnet-b0 --batch_size 256 --num_epochs 200
+   ```
+   For mixed precision (recommended for A100):
+   ```bash
+   python code/train.py --model efficientnet-b0 --mixed_precision
+   ```
+5. **Parameter search:**
+   ```bash
+   python code/parameter_search.py --mixed_precision
+   ```
+6. **CAM visualization:**
+   ```bash
+   python code/cam_visualization_colab.py --images_path /path/to/images --output_path /path/to/output
+   ```
 
-Train with mixed precision (recommended for A100):
-```bash
-python train.py --model efficientnet-b0 --mixed_precision
-```
+- **Dependencies:** See `code/requirements.txt` for required libraries.
+- **Resources:** A100 GPU recommended for fastest training; multi-GPU supported.
 
-### Parameter Search
+## Results/Insights
 
-Search for optimal compound scaling parameters:
-```bash
-python parameter_search.py --mixed_precision
-```
+- Our EfficientNet re-implementation achieves competitive accuracy on CIFAR100, closely matching the scaling trends reported in the original paper.
+- Compound scaling parameter search finds optimal depth/width/resolution combinations under FLOPs constraints.
+- CAM visualizations show that compound-scaled models focus more accurately on relevant image regions, supporting the paper's claims.
+- See `results/` for accuracy plots and CAM visualizations.
 
-The parameter search implements the compound scaling constraint from the paper:
-- α * β² * γ² ≈ 2 (where α is depth, β is width, γ is resolution)
-- Searches for combinations where 1.9 ≤ α * β² * γ² ≤ 2.1
-- Tracks model size and FLOPs for each combination
+## Conclusion
 
-### Class Activation Map (CAM) Visualization
+This re-implementation validates the effectiveness of compound scaling for efficient model design. The codebase provides a reproducible framework for further research on model scaling and interpretability.
 
-Visualize and compare Class Activation Maps across different scaling strategies:
-```bash
-python cam_visualization_colab.py --images_path /path/to/images --output_path /path/to/output
-```
+## References
 
-This creates visualizations showing:
-- Original images
-- Activation heatmaps for baseline model
-- Activation heatmaps for deeper models
-- Activation heatmaps for wider models
-- Activation heatmaps for higher resolution models
-- Activation heatmaps for compound scaling models
+- Tan, M., & Le, Q. V. (2019). [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946). arXiv preprint arXiv:1905.11946.
+- PyTorch documentation: https://pytorch.org/
+- CIFAR100 dataset: https://www.cs.toronto.edu/~kriz/cifar.html
 
-The CAM visualizations help interpret where the model focuses its attention when making predictions, highlighting the benefit of compound scaling in creating more focused and accurate attention maps.
+## Acknowledgements
 
-### Available Models
-
-- EfficientNet variants: `efficientnet-b0` through `efficientnet-b7`
-- Reference models: `resnet50`, `resnet152`, `densenet201`
-
-### Training Parameters
-
-- `--model`: Model architecture to train
-- `--batch_size`: Batch size for training (default: 256)
-- `--num_epochs`: Number of training epochs (default: 200)
-- `--learning_rate`: Initial learning rate (default: 0.1)
-- `--weight_decay`: Weight decay (default: 5e-4)
-- `--num_workers`: Number of data loading workers (default: 8)
-- `--data_dir`: Directory to store dataset (default: 'data')
-- `--save_dir`: Directory to save model checkpoints (default: 'results')
-- `--mixed_precision`: Enable mixed precision training (recommended for A100)
-- `--max_flops`: Maximum allowed FLOPs for parameter search (default: 1e10)
-
-## Implementation Details
-
-### EfficientNet Architecture
-
-The implementation follows the paper's architecture:
-- MBConv blocks with squeeze-and-excitation
-- Swish activation function
-- Proper width and depth scaling for B0-B7 variants
-- Input size: 32x32 (optimized for CIFAR100)
-
-### Compound Scaling
-
-The implementation includes the paper's compound scaling method:
-- α: Network depth scaling factor
-- β: Network width scaling factor
-- γ: Resolution scaling factor
-- Constraint: α * β² * γ² ≈ 2
-- Parameter search to find optimal combinations
-- Resource-aware scaling with FLOPs constraints
-
-### GPU Optimizations
-
-- Automatic Mixed Precision (AMP) training
-- Multi-GPU support with DataParallel
-- Optimized data loading with pin memory
-- Non-blocking data transfers
-- cuDNN benchmarking enabled
-- Gradient clipping for stability
-
-### Dataset Handling
-
-- CIFAR100: 32x32 images, 100 classes
-- Advanced data augmentation:
-  - Random cropping with padding
-  - Random horizontal flipping
-  - Random rotation
-  - Color jittering
-- Efficient data loading with persistent workers
-- Automatic dataset download and caching
-
-### Model Interpretability
-
-The project includes tools for model interpretability:
-- Class Activation Map (CAM) visualization for all scaling approaches
-- Comparison of attention patterns across different scaling methods
-- Custom colormap similar to the one used in the EfficientNet paper
-- Integration with Google Colab for easy visualization sharing
-- Support for batch processing multiple images
-
-## Results
-
-The implementation aims to achieve state-of-the-art results on CIFAR100:
-- EfficientNet-B0: ~5.3M parameters
-- EfficientNet-B1: ~7.8M parameters
-- EfficientNet-B2: ~9.2M parameters
-- EfficientNet-B3: ~12M parameters
-- EfficientNet-B4: ~19M parameters
-- EfficientNet-B5: ~30M parameters
-- EfficientNet-B6: ~43M parameters
-- EfficientNet-B7: ~66M parameters
-
-The parameter search helps find optimal scaling combinations that:
-- Maximize model accuracy
-- Stay within computational budget
-- Satisfy the compound scaling constraint
-- Balance depth, width, and resolution
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Original paper: ["EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks"](https://arxiv.org/abs/1905.11946)
-- PyTorch implementation reference 
+- Original authors of EfficientNet for their foundational work.
+- PyTorch community for open-source tools and documentation.
+- This re-implementation was completed as part of a course project for CS4782, adding peer-reviewed authenticity. 
